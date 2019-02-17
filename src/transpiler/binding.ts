@@ -81,7 +81,7 @@ export function getBindingData(
 	bindingPattern: ts.Node,
 	parentId: string,
 ) {
-	const strKeys = bindingPattern.getKind() === ts.SyntaxKind.ObjectBindingPattern;
+	const strKeys = ts.TypeGuards.isObjectBindingPattern(bindingPattern);
 	const listItems = bindingPattern
 		.getFirstChildByKindOrThrow(ts.SyntaxKind.SyntaxList)
 		.getChildren()
@@ -93,6 +93,7 @@ export function getBindingData(
 				ts.TypeGuards.isArrayLiteralExpression(child) ||
 				ts.TypeGuards.isPropertyAccessExpression(child),
 		);
+
 	let childIndex = 1;
 	for (const item of listItems) {
 		if (ts.TypeGuards.isBindingElement(item)) {

@@ -1,8 +1,9 @@
 import * as ts from "ts-morph";
-import { checkReserved, getBindingData, transpileCallExpression, transpileExpression } from ".";
+import { checkReserved, transpileExpression } from ".";
 import { TranspilerError, TranspilerErrorType } from "../errors/TranspilerError";
 import { TranspilerState } from "../TranspilerState";
-import { isTupleReturnType, shouldHoist } from "../typeUtilities";
+import { shouldHoist } from "../typeUtilities";
+import { transpileArrayEqualsExpression } from "./binary";
 
 export function transpileVariableDeclaration(state: TranspilerState, node: ts.VariableDeclaration) {
 	const lhs = node.getNameNode();
@@ -20,36 +21,6 @@ export function transpileVariableDeclaration(state: TranspilerState, node: ts.Va
 	let parentName = "";
 	if (isExported) {
 		parentName = state.getExportContextName(grandParent);
-	}
-
-	if (ts.TypeGuards.isArrayBindingPattern(lhs)) {
-		const isFlatBinding = lhs
-			.getElements()
-			.filter(v => ts.TypeGuards.isBindingElement(v))
-			.every(bindingElement => bindingElement.getChildAtIndex(0).getKind() === ts.SyntaxKind.Identifier);
-		if (isFlatBinding && rhs && ts.TypeGuards.isCallExpression(rhs) && isTupleReturnType(rhs)) {
-			const names = new Array<string>();
-			const values = new Array<string>();
-			for (const element of lhs.getElements()) {
-				if (ts.TypeGuards.isBindingElement(element)) {
-					const nameNode = element.getNameNode();
-					if (ts.TypeGuards.isIdentifier(nameNode)) {
-						names.push(transpileExpression(state, nameNode));
-					}
-				} else if (ts.TypeGuards.isOmittedExpression(element)) {
-					names.push("_");
-				}
-			}
-			values.push(transpileCallExpression(state, rhs, true));
-			if (isExported && decKind === ts.VariableDeclarationKind.Let) {
-				return state.indent + `${names.join(", ")} = ${values.join(", ")};\n`;
-			} else {
-				if (isExported && ts.TypeGuards.isVariableStatement(grandParent)) {
-					names.forEach(name => state.pushExport(name, grandParent));
-				}
-				return state.indent + `local ${names.join(", ")} = ${values.join(", ")};\n`;
-			}
-		}
 	}
 
 	let result = "";
@@ -80,32 +51,30 @@ export function transpileVariableDeclaration(state: TranspilerState, node: ts.Va
 		}
 	} else if ((ts.TypeGuards.isArrayBindingPattern(lhs) || ts.TypeGuards.isObjectBindingPattern(lhs)) && rhs) {
 		// binding patterns MUST have rhs
+
 		const names = new Array<string>();
 		const values = new Array<string>();
-		const preStatements = new Array<string>();
-		const postStatements = new Array<string>();
-		if (ts.TypeGuards.isIdentifier(rhs)) {
-			getBindingData(state, names, values, preStatements, postStatements, lhs, transpileExpression(state, rhs));
-		} else {
-			const rootId = state.getNewId();
-			const rhsStr = transpileExpression(state, rhs);
-			preStatements.push(`local ${rootId} = ${rhsStr};`);
-			getBindingData(state, names, values, preStatements, postStatements, lhs, rootId);
-		}
-		preStatements.forEach(statementStr => (result += state.indent + statementStr + "\n"));
+		const isLet = decKind === ts.VariableDeclarationKind.Let;
+		const shouldLocalize = !isExported || !isLet;
+		const [expStr] = transpileArrayEqualsExpression(
+			state,
+			lhs,
+			rhs,
+			shouldLocalize,
+			names,
+			values,
+			isExported,
+			decKind,
+		);
+		result += expStr;
+
 		if (values.length > 0) {
-			if (isExported && decKind === ts.VariableDeclarationKind.Let) {
-				result += state.indent + `${names.join(", ")} = ${values.join(", ")};\n`;
-			} else {
-				if (isExported && ts.TypeGuards.isVariableStatement(grandParent)) {
-					names.forEach(name => state.pushExport(name, grandParent));
-				}
-				result += state.indent + `local ${names.join(", ")} = ${values.join(", ")};\n`;
+			if (isExported && !isLet && ts.TypeGuards.isVariableStatement(grandParent)) {
+				names.forEach(name => state.pushExport(name, grandParent));
 			}
 		} else if (!isExported) {
 			result += state.indent + `local ${names.join(", ")};\n`;
 		}
-		postStatements.forEach(statementStr => (result += state.indent + statementStr + "\n"));
 	}
 
 	return result;
