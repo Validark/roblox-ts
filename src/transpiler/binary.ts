@@ -110,6 +110,8 @@ export function transpileArrayEqualsExpression(
 	const prestatement = shouldLocalize ? "local " : "";
 	const exportContext = isExported ? state.getExportContextName(lhs) + "." : "";
 	getElementNames(state, lhs).forEach(a => names.push(exportContext + a));
+	console.log(exportContext);
+	names.forEach(a => console.log(a));
 
 	const preStatements = new Array<string>();
 	const postStatements = new Array<string>();
