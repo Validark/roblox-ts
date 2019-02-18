@@ -1,12 +1,11 @@
 import * as ts from "ts-morph";
-import { transpileExpression } from ".";
+import { checkNonAny, getBindingData, transpileExpression } from ".";
 import { TranspilerError, TranspilerErrorType } from "../errors/TranspilerError";
 import { TranspilerState } from "../TranspilerState";
-import { isNumberType, isStringType, isTupleReturnType } from "../typeUtilities";
-import { getBindingData } from "./binding";
+import { isTupleReturnType } from "../typeUtilities";
+import { isNumberType, isStringType } from "../typeUtilities";
 import { transpileCallExpression } from "./call";
 import { transpileIdentifier } from "./identifier";
-import { checkNonAny } from "./security";
 
 function getLuaBarExpression(state: TranspilerState, node: ts.BinaryExpression, lhsStr: string, rhsStr: string) {
 	state.usesTSLibrary = true;
@@ -29,6 +28,8 @@ function getLuaAddExpression(node: ts.BinaryExpression, lhsStr: string, rhsStr: 
 	}
 	const leftType = node.getLeft().getType();
 	const rightType = node.getRight().getType();
+
+	/* istanbul ignore else */
 	if (isStringType(leftType) || isStringType(rightType)) {
 		return `(${lhsStr}) .. ${rhsStr}`;
 	} else if (isNumberType(leftType) && isNumberType(rightType)) {
@@ -224,6 +225,7 @@ export function transpileBinaryExpression(state: TranspilerState, node: ts.Binar
 			lhsStr = transpileExpression(state, lhs);
 		}
 
+		/* istanbul ignore else */
 		if (opKind === ts.SyntaxKind.EqualsToken) {
 			statements.push(`${lhsStr} = ${rhsStr}`);
 		} else if (opKind === ts.SyntaxKind.BarEqualsToken) {
@@ -267,6 +269,7 @@ export function transpileBinaryExpression(state: TranspilerState, node: ts.Binar
 		lhsStr = transpileExpression(state, lhs);
 	}
 
+	/* istanbul ignore else */
 	if (opKind === ts.SyntaxKind.EqualsEqualsToken) {
 		throw new TranspilerError(
 			"operator '==' is not supported! Use '===' instead.",

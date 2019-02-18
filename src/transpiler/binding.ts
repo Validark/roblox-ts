@@ -17,6 +17,7 @@ export function getParameterData(
 			param.getFirstChildByKind(ts.SyntaxKind.ArrayBindingPattern) ||
 			param.getFirstChildByKind(ts.SyntaxKind.ObjectBindingPattern);
 
+		/* istanbul ignore next */
 		if (child === undefined) {
 			throw new TranspilerError(
 				"Child missing from parameter!",
@@ -96,6 +97,7 @@ export function getBindingData(
 
 	let childIndex = 1;
 	for (const item of listItems) {
+		/* istanbul ignore else */
 		if (ts.TypeGuards.isBindingElement(item)) {
 			const [child, op, pattern] = item.getChildren();
 			const childText = child.getText();
@@ -109,6 +111,7 @@ export function getBindingData(
 				);
 			}
 
+			/* istanbul ignore else */
 			if (
 				pattern &&
 				(ts.TypeGuards.isArrayBindingPattern(pattern) || ts.TypeGuards.isObjectBindingPattern(pattern))

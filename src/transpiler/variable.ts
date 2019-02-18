@@ -72,8 +72,6 @@ export function transpileVariableDeclaration(state: TranspilerState, node: ts.Va
 			if (isExported && !isLet && ts.TypeGuards.isVariableStatement(grandParent)) {
 				names.forEach(name => state.pushExport(name, grandParent));
 			}
-		} else if (!isExported) {
-			result += state.indent + `local ${names.join(", ")};\n`;
 		}
 	}
 
