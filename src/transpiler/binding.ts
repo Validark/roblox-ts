@@ -66,9 +66,9 @@ export function getParameterData(
 			const postStatements = new Array<string>();
 			getBindingData(state, names, values, preStatements, postStatements, child, name);
 			preStatements.forEach(statement => initializers.push(statement));
-			const namesStr = names.join(", ");
-			const valuesStr = values.join(", ");
-			initializers.push(`local ${namesStr} = ${valuesStr};`);
+			if (names.length > 0) {
+				initializers.push(`local ${names.join(", ")} = ${values.join(", ")};`);
+			}
 			postStatements.forEach(statement => initializers.push(statement));
 		}
 	}

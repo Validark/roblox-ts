@@ -93,14 +93,18 @@ export function transpileBinaryExpression(state: TranspilerState, node: ts.Binar
 		const parentKind = node.getParentOrThrow().getKind();
 		if (parentKind === ts.SyntaxKind.ExpressionStatement || parentKind === ts.SyntaxKind.ForStatement) {
 			preStatements.forEach(statementStr => (result += state.indent + statementStr + "\n"));
-			result += state.indent + `${names.join(", ")} = ${values.join(", ")};\n`;
+			if (names.length > 0) {
+				result += state.indent + `${names.join(", ")} = ${values.join(", ")};\n`;
+			}
 			postStatements.forEach(statementStr => (result += state.indent + statementStr + "\n"));
 			result = result.replace(/;\n$/, ""); // terrible hack
 		} else {
 			result += `(function()\n`;
 			state.pushIndent();
 			preStatements.forEach(statementStr => (result += state.indent + statementStr + "\n"));
-			result += state.indent + `${names.join(", ")} = ${values.join(", ")};\n`;
+			if (names.length > 0) {
+				result += state.indent + `${names.join(", ")} = ${values.join(", ")};\n`;
+			}
 			postStatements.forEach(statementStr => (result += state.indent + statementStr + "\n"));
 			result += state.indent + `return ${rootId};\n`;
 			state.popIndent();

@@ -180,9 +180,9 @@ export function transpileForOfStatement(state: TranspilerState, node: ts.ForOfSt
 				const postStatements = new Array<string>();
 				getBindingData(state, names, values, preStatements, postStatements, lhs, varName);
 				preStatements.forEach(myStatement => initializers.push(myStatement));
-				const namesStr = names.join(", ");
-				const valuesStr = values.join(", ");
-				initializers.push(`local ${namesStr} = ${valuesStr};\n`);
+				if (names.length > 0) {
+					initializers.push(`local ${names.join(", ")} = ${values.join(", ")};\n`);
+				}
 				postStatements.forEach(myStatement => initializers.push(myStatement));
 			} else if (ts.TypeGuards.isIdentifier(lhs)) {
 				varName = lhs.getText();

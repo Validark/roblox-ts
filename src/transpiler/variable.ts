@@ -41,6 +41,7 @@ export function transpileVariableDeclaration(state: TranspilerState, node: ts.Va
 				}
 			}
 			values.push(transpileCallExpression(state, rhs, true));
+			names[0] = names[0] || "_";
 			if (isExported && decKind === ts.VariableDeclarationKind.Let) {
 				return state.indent + `${names.join(", ")} = ${values.join(", ")};\n`;
 			} else {
