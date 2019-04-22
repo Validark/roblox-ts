@@ -28,74 +28,75 @@ import { TranspilerState } from "../TranspilerState";
 import { isTypeStatement } from "../typeUtilities";
 
 export function transpileStatement(state: TranspilerState, node: ts.Statement): string {
+	state.enterPreStatementContext();
+	let result: string;
+
 	/* istanbul ignore else  */
-	if (isTypeStatement(node)) {
-		return "";
+	if (
+		isTypeStatement(node) ||
+		ts.TypeGuards.isEmptyStatement(node) ||
+		ts.TypeGuards.isTypeAliasDeclaration(node) ||
+		ts.TypeGuards.isInterfaceDeclaration(node)
+	) {
+		result = "";
 	} else if (ts.TypeGuards.isBlock(node)) {
-		return transpileBlock(state, node);
+		result = transpileBlock(state, node);
 	} else if (ts.TypeGuards.isImportDeclaration(node)) {
-		return transpileImportDeclaration(state, node);
+		result = transpileImportDeclaration(state, node);
 	} else if (ts.TypeGuards.isImportEqualsDeclaration(node)) {
-		return transpileImportEqualsDeclaration(state, node);
+		result = transpileImportEqualsDeclaration(state, node);
 	} else if (ts.TypeGuards.isExportDeclaration(node)) {
-		return transpileExportDeclaration(state, node);
+		result = transpileExportDeclaration(state, node);
 	} else if (ts.TypeGuards.isFunctionDeclaration(node)) {
-		return transpileFunctionDeclaration(state, node);
+		result = transpileFunctionDeclaration(state, node);
 	} else if (ts.TypeGuards.isClassDeclaration(node)) {
-		return transpileClassDeclaration(state, node);
+		result = transpileClassDeclaration(state, node);
 	} else if (ts.TypeGuards.isNamespaceDeclaration(node)) {
-		return transpileNamespaceDeclaration(state, node);
+		result = transpileNamespaceDeclaration(state, node);
 	} else if (ts.TypeGuards.isDoStatement(node)) {
-		return transpileDoStatement(state, node);
+		result = transpileDoStatement(state, node);
 	} else if (ts.TypeGuards.isIfStatement(node)) {
-		return transpileIfStatement(state, node);
+		result = transpileIfStatement(state, node);
 	} else if (ts.TypeGuards.isBreakStatement(node)) {
-		return transpileBreakStatement(state, node);
+		result = transpileBreakStatement(state, node);
 	} else if (ts.TypeGuards.isExpressionStatement(node)) {
-		return transpileExpressionStatement(state, node);
+		result = transpileExpressionStatement(state, node);
 	} else if (ts.TypeGuards.isContinueStatement(node)) {
-		return transpileContinueStatement(state, node);
+		result = transpileContinueStatement(state, node);
 	} else if (ts.TypeGuards.isForInStatement(node)) {
 		throw new TranspilerError("For..in loops are disallowed!", node, TranspilerErrorType.ForInLoop);
 	} else if (ts.TypeGuards.isForOfStatement(node)) {
-		return transpileForOfStatement(state, node);
+		result = transpileForOfStatement(state, node);
 	} else if (ts.TypeGuards.isForStatement(node)) {
-		return transpileForStatement(state, node);
+		result = transpileForStatement(state, node);
 	} else if (ts.TypeGuards.isReturnStatement(node)) {
-		return transpileReturnStatement(state, node);
+		result = transpileReturnStatement(state, node);
 	} else if (ts.TypeGuards.isThrowStatement(node)) {
-		return transpileThrowStatement(state, node);
+		result = transpileThrowStatement(state, node);
 	} else if (ts.TypeGuards.isVariableStatement(node)) {
-		return transpileVariableStatement(state, node);
+		result = transpileVariableStatement(state, node);
 	} else if (ts.TypeGuards.isWhileStatement(node)) {
-		return transpileWhileStatement(state, node);
+		result = transpileWhileStatement(state, node);
 	} else if (ts.TypeGuards.isEnumDeclaration(node)) {
-		return transpileEnumDeclaration(state, node);
+		result = transpileEnumDeclaration(state, node);
 	} else if (ts.TypeGuards.isExportAssignment(node)) {
-		return transpileExportAssignment(state, node);
+		result = transpileExportAssignment(state, node);
 	} else if (ts.TypeGuards.isSwitchStatement(node)) {
-		return transpileSwitchStatement(state, node);
+		result = transpileSwitchStatement(state, node);
 	} else if (ts.TypeGuards.isTryStatement(node)) {
-		return transpileTryStatement(state, node);
+		result = transpileTryStatement(state, node);
 	} else if (ts.TypeGuards.isLabeledStatement(node)) {
 		throw new TranspilerError(
 			"Labeled statements are not supported!",
 			node,
 			TranspilerErrorType.NoLabeledStatement,
 		);
+	} else {
+		/* istanbul ignore next */
+		throw new TranspilerError(`Bad statement! (${node.getKindName()})`, node, TranspilerErrorType.BadStatement);
 	}
 
-	/* istanbul ignore next */
-	if (
-		ts.TypeGuards.isEmptyStatement(node) ||
-		ts.TypeGuards.isTypeAliasDeclaration(node) ||
-		ts.TypeGuards.isInterfaceDeclaration(node)
-	) {
-		return "";
-	}
-
-	/* istanbul ignore next */
-	throw new TranspilerError(`Bad statement! (${node.getKindName()})`, node, TranspilerErrorType.BadStatement);
+	return state.exitPreStatementContext() + result;
 }
 
 export function transpileStatementedNode(state: TranspilerState, node: ts.Node & ts.StatementedNode) {

@@ -9,6 +9,25 @@ interface Partition {
 export class TranspilerState {
 	constructor(public readonly syncInfo: Array<Partition>, public readonly modulesDir?: ts.Directory) {}
 
+	private preStatementContext = new Array<Array<string>>();
+
+	public pushPreStatement(str: string) {
+		this.preStatementContext[this.preStatementContext.length - 1].push(str);
+	}
+
+	public enterPreStatementContext() {
+		const newContext = new Array<string>();
+		this.preStatementContext.push(newContext);
+		return newContext;
+	}
+
+	/** Exits a preStatement context and returns the popped layer so it may be appended */
+	public exitPreStatementContext() {
+		return this.preStatementContext.pop()!.join("");
+	}
+
+	public currentConditionalContext?: string;
+
 	// indent
 	public indent = "";
 
