@@ -26,7 +26,11 @@ export class TranspilerState {
 		return this.preStatementContext.pop()!.join("");
 	}
 
-	public currentConditionalContext?: string;
+	public hasPreStatementsInContext() {
+		return this.preStatementContext[this.preStatementContext.length - 1].length > 0;
+	}
+
+	public currentConditionalContext: string = "";
 
 	// indent
 	public indent = "";

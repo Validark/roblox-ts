@@ -66,7 +66,7 @@ export function transpileBinaryExpression(state: TranspilerState, node: ts.Binar
 	const lhs = node.getLeft();
 	const rhs = node.getRight();
 	let lhsStr: string;
-	const rhsStr = transpileExpression(state, rhs);
+	let rhsStr: string;
 	const statements = new Array<string>();
 
 	if (opKind !== ts.SyntaxKind.EqualsToken) {
@@ -121,6 +121,7 @@ export function transpileBinaryExpression(state: TranspilerState, node: ts.Binar
 		} else {
 			lhsStr = transpileExpression(state, lhs);
 		}
+		rhsStr = transpileExpression(state, rhs);
 
 		/* istanbul ignore else */
 		if (opKind === ts.SyntaxKind.EqualsToken) {
@@ -164,6 +165,7 @@ export function transpileBinaryExpression(state: TranspilerState, node: ts.Binar
 		}
 	} else {
 		lhsStr = transpileExpression(state, lhs);
+		rhsStr = transpileExpression(state, rhs);
 	}
 
 	/* istanbul ignore else */

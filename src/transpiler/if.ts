@@ -10,20 +10,43 @@ export function transpileIfStatement(state: TranspilerState, node: ts.IfStatemen
 	result += transpileStatement(state, node.getThenStatement());
 	state.popIndent();
 	let elseStatement = node.getElseStatement();
+	let numBlocks = 1;
+
 	while (elseStatement && ts.TypeGuards.isIfStatement(elseStatement)) {
+		state.enterPreStatementContext();
+		state.pushIndent();
 		const elseIfExpression = transpileExpression(state, elseStatement.getExpression());
-		result += state.indent + `elseif ${elseIfExpression} then\n`;
+
+		if (state.hasPreStatementsInContext()) {
+			state.popIndent();
+			result += state.indent + `else\n`;
+			state.pushIndent();
+			numBlocks++;
+			result += state.exitPreStatementContext();
+			result += state.indent + `if ${elseIfExpression} then\n`;
+		} else {
+			state.popIndent();
+			result += state.indent + `elseif ${elseIfExpression} then\n`;
+		}
+
 		state.pushIndent();
 		result += transpileStatement(state, elseStatement.getThenStatement());
 		state.popIndent();
 		elseStatement = elseStatement.getElseStatement();
 	}
+
 	if (elseStatement) {
 		result += state.indent + "else\n";
 		state.pushIndent();
 		result += transpileStatement(state, elseStatement);
 		state.popIndent();
 	}
+
 	result += state.indent + `end;\n`;
+
+	for (let i = 1; i < numBlocks; i++) {
+		state.popIndent();
+		result += state.indent + `end;\n`;
+	}
 	return result;
 }

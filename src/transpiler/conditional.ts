@@ -9,7 +9,6 @@ function strWithoutParens(str: string) {
 
 	while (str[0] === "(" && str[str.length - 1] === ")") {
 		str = str.slice(1, -1);
-		console.log(str);
 	}
 	return str;
 }
@@ -19,12 +18,12 @@ export function transpileConditionalExpression(state: TranspilerState, node: ts.
 	let result = "";
 	const currentConditionalContext = state.currentConditionalContext;
 
-	if (currentConditionalContext) {
-		id = currentConditionalContext;
-	} else {
+	if (currentConditionalContext === "") {
 		id = state.getNewId();
 		state.currentConditionalContext = id;
-		result = state.indent + `local ${id};\n`;
+		state.pushPreStatement(state.indent + `local ${id};\n`);
+	} else {
+		id = currentConditionalContext;
 	}
 	result += state.indent + `if ${transpileExpression(state, node.getCondition())} then\n`;
 	state.pushIndent();
@@ -46,5 +45,9 @@ export function transpileConditionalExpression(state: TranspilerState, node: ts.
 	state.popIndent();
 	result += state.indent + `end;\n`;
 	state.pushPreStatement(result);
+
+	if (currentConditionalContext === "") {
+		state.currentConditionalContext = "";
+	}
 	return id;
 }

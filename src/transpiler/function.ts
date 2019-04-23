@@ -30,31 +30,29 @@ export function getFirstMemberWithParameters(nodes: Array<ts.Node<ts.ts.Node>>):
 	return undefined;
 }
 
-function getReturnStrFromExpression(state: TranspilerState, exp: ts.Expression, func?: HasParameters) {
+function getReturnStrExpStr(state: TranspilerState, exp: ts.Expression, func?: HasParameters) {
 	if (func && isTupleReturnType(func)) {
 		if (ts.TypeGuards.isArrayLiteralExpression(exp)) {
-			let expStr = transpileExpression(state, exp);
-			expStr = expStr.substr(2, expStr.length - 4);
-			return `return ${expStr};`;
+			return transpileExpression(state, exp).slice(2, -2);
 		} else if (ts.TypeGuards.isCallExpression(exp) && isTupleReturnTypeCall(exp)) {
-			const expStr = transpileCallExpression(state, exp, true);
-			return `return ${expStr};`;
+			return transpileCallExpression(state, exp, true);
 		} else {
-			const expStr = transpileExpression(state, exp);
-			return `return unpack(${expStr});`;
+			return `unpack(${transpileExpression(state, exp)});`;
 		}
 	}
-	return `return ${transpileExpression(state, exp)};`;
+	return transpileExpression(state, exp);
+}
+
+function getReturnStrFromExpression(state: TranspilerState, exp: ts.Expression, func?: HasParameters) {
+	state.enterPreStatementContext();
+	const expStr = getReturnStrExpStr(state, exp, func);
+	return state.exitPreStatementContext() + state.indent + `return ${expStr};`;
 }
 
 export function transpileReturnStatement(state: TranspilerState, node: ts.ReturnStatement) {
 	const exp = node.getExpression();
 	if (exp) {
-		return (
-			state.indent +
-			getReturnStrFromExpression(state, exp, getFirstMemberWithParameters(node.getAncestors())) +
-			"\n"
-		);
+		return getReturnStrFromExpression(state, exp, getFirstMemberWithParameters(node.getAncestors())) + "\n";
 	} else {
 		return state.indent + `return nil;\n`;
 	}
@@ -76,7 +74,7 @@ function transpileFunctionBody(
 		if (isBlock) {
 			result += transpileBlock(state, body as ts.Block);
 		} else {
-			result += state.indent + getReturnStrFromExpression(state, body as ts.Expression, node) + "\n";
+			result += getReturnStrFromExpression(state, body as ts.Expression, node) + "\n";
 		}
 		state.popIndent();
 		result += state.indent;
@@ -110,8 +108,8 @@ function transpileFunction(state: TranspilerState, node: HasParameters, name: st
 
 	let result: string;
 	let backWrap = "";
-
 	let prefix = "";
+
 	if (ts.TypeGuards.isFunctionDeclaration(node)) {
 		const nameNode = node.getNameNode();
 		if (nameNode && shouldHoist(node, nameNode)) {
@@ -163,6 +161,7 @@ function transpileFunction(state: TranspilerState, node: HasParameters, name: st
 	} else {
 		result += transpileFunctionBody(state, body, node, initializers);
 	}
+
 	state.popIdStack();
 	return result + "end" + backWrap;
 }

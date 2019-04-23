@@ -50,6 +50,13 @@ export function transpileIdentifier(state: TranspilerState, node: ts.Identifier,
 						if (parentName) {
 							return parentName + "." + name;
 						}
+					} else {
+						const idContext = node.getFirstAncestorByKind(ts.SyntaxKind.ModuleDeclaration);
+						const defContext = parent.getFirstAncestorByKind(ts.SyntaxKind.ModuleDeclaration);
+
+						if (idContext && defContext && idContext !== defContext) {
+							state.pushHoistStack(`local ${name} = ${state.getNameForContext(defContext)}.${name}`);
+						}
 					}
 					break;
 				} else if (parent.getKind() === ts.SyntaxKind.OpenParenToken) {
