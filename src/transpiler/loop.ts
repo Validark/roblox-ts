@@ -639,10 +639,34 @@ export function transpileWhileStatement(state: TranspilerState, node: ts.WhileSt
 	checkLoopClassExp(exp);
 	const expStr = transpileExpression(state, exp);
 	let result = "";
-	result += state.indent + `while ${expStr} do\n`;
-	state.pushIndent();
-	result += transpileLoopBody(state, node.getStatement());
-	state.popIndent();
-	result += state.indent + `end;\n`;
+	const postStatements = "";
+
+	if (state.hasPreStatementsInContext()) {
+		result += state.indent + `repeat\n`;
+		state.pushIndent();
+		result += state.exitPreStatementContext(1);
+		result += state.indent + `if not ( ${expStr} ) then break; end;\n`;
+		state.enterPreStatementContext();
+		result += transpileLoopBody(state, node.getStatement());
+		result += postStatements;
+		state.popIndent();
+		result += state.indent + `until false;\n`;
+
+		// postStatements =
+		// 	"\t" +
+		// 	state.preStatementContext[state.preStatementContext.length - 1]
+		// 		.filter(str => !str.trim().startsWith("local "))
+		// 		.join("")
+		// 		.replace(/\n\t+/g, str => {
+		// 			return str + "\t";
+		// 		});
+	} else {
+		result += state.indent + `while ${expStr} do\n`;
+		state.pushIndent();
+		result += transpileLoopBody(state, node.getStatement());
+		result += postStatements;
+		state.popIndent();
+		result += state.indent + `end;\n`;
+	}
 	return result;
 }

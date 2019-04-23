@@ -4,12 +4,16 @@ import { TranspilerState } from "../TranspilerState";
 
 export const BUILT_INS = ["Promise", "Symbol", "typeIs"];
 
-export const replacements = new Map<string, string>([["undefined", "nil"], ["typeOf", "typeof"]]);
+export const replacements: ReadonlyMap<string, string> = new Map<string, string>([
+	["undefined", "nil"],
+	["typeOf", "typeof"],
+]);
 
-export function transpileIdentifier(state: TranspilerState, node: ts.Identifier, isDefinition: boolean = false) {
+function transpileIdentifierRaw(state: TranspilerState, node: ts.Identifier, isDefinition: boolean) {
 	let name = node.getText();
 
 	const replacement = replacements.get(name);
+
 	if (replacement) {
 		return replacement;
 	}
@@ -80,4 +84,35 @@ export function transpileIdentifier(state: TranspilerState, node: ts.Identifier,
 	}
 
 	return state.getAlias(name);
+}
+
+export function transpileIdentifier(state: TranspilerState, node: ts.Identifier, isDefinition: boolean = false) {
+	// const parent = node.getFirstAncestorByKind(ts.SyntaxKind.CallExpression);
+	// if (parent) {
+	// 	const myArguments = parent.getArguments();
+	// 	const argNum = myArguments.findIndex(
+	// 		arg => arg === node || arg.getDescendants().some(descendant => descendant === node),
+	// 	);
+	// 	console.log(argNum, node.getText(), parent.getText());
+
+	// 	if (argNum !== -1) {
+	// 		const definition = node.getDefinitions().map(def => def.getNode())[0];
+	// 		if (
+	// 			definition &&
+	// 			(myArguments.length !== argNum + 1 &&
+	// 				myArguments.slice(argNum + 1).some(arg => {
+	// 					const bool = expressionModifiesVariable(arg, definition as ts.Identifier);
+
+	// 					return bool;
+	// 				}))
+	// 		) {
+	// 			const id = state.getNewId();
+	// 			state.pushPreStatement(
+	// 				state.indent + `local ${id} = ${transpileIdentifierRaw(state, node, isDefinition)};\n`,
+	// 			);
+	// 			return id;
+	// 		}
+	// 	}
+	// }
+	return transpileIdentifierRaw(state, node, isDefinition);
 }

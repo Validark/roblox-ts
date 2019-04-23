@@ -155,25 +155,36 @@ export function expressionModifiesVariable(
 	node: ts.Node<ts.ts.Node>,
 	lhs?: ts.Identifier,
 ): node is ts.BinaryExpression | ts.PrefixUnaryExpression | ts.PostfixUnaryExpression {
-	if (
-		ts.TypeGuards.isPostfixUnaryExpression(node) ||
-		(ts.TypeGuards.isPrefixUnaryExpression(node) &&
-			(node.getOperatorToken() === ts.SyntaxKind.PlusPlusToken ||
-				node.getOperatorToken() === ts.SyntaxKind.MinusMinusToken))
-	) {
-		if (lhs) {
-			return isIdentifierWhoseDefinitionMatchesNode(node.getOperand(), lhs);
-		} else {
-			return true;
-		}
-	} else if (ts.TypeGuards.isBinaryExpression(node) && isSetToken(node.getOperatorToken().getKind())) {
-		if (lhs) {
-			return isIdentifierWhoseDefinitionMatchesNode(node.getLeft(), lhs);
-		} else {
-			return true;
-		}
+	const modifiedVars = getModifiedVariablesInExpression(node);
+
+	if (lhs) {
+		return modifiedVars
+			? modifiedVars.some(modifiedVar => isIdentifierWhoseDefinitionMatchesNode(modifiedVar, lhs))
+			: false;
+	} else {
+		return modifiedVars ? true : false;
 	}
-	return false;
+}
+
+export function getModifiedVariablesInExpression(expression: ts.Node<ts.ts.Node>) {
+	return [expression, ...expression.getDescendants()]
+		.map(node => {
+			if (
+				ts.TypeGuards.isPostfixUnaryExpression(node) ||
+				(ts.TypeGuards.isPrefixUnaryExpression(node) &&
+					(node.getOperatorToken() === ts.SyntaxKind.PlusPlusToken ||
+						node.getOperatorToken() === ts.SyntaxKind.MinusMinusToken))
+			) {
+				return node.getOperand();
+			} else if (ts.TypeGuards.isBinaryExpression(node) && isSetToken(node.getOperatorToken().getKind())) {
+				return node.getLeft();
+			}
+		})
+		.filter((exp): exp is ts.Expression => exp !== undefined);
+}
+
+export function getAccessedVariablesInExpression(expression: ts.Node<ts.ts.Node>) {
+	return [expression, ...expression.getDescendants()].filter(node => ts.TypeGuards.isIdentifier(node));
 }
 
 export function appendDeclarationIfMissing(

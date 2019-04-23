@@ -15,7 +15,6 @@ function strWithoutParens(str: string) {
 
 export function transpileConditionalExpression(state: TranspilerState, node: ts.ConditionalExpression) {
 	let id: string;
-	let result = "";
 	const currentConditionalContext = state.currentConditionalContext;
 
 	if (currentConditionalContext === "") {
@@ -25,26 +24,22 @@ export function transpileConditionalExpression(state: TranspilerState, node: ts.
 	} else {
 		id = currentConditionalContext;
 	}
-	result += state.indent + `if ${transpileExpression(state, node.getCondition())} then\n`;
+	state.pushPreStatement(state.indent + `if ${transpileExpression(state, node.getCondition())} then\n`);
 	state.pushIndent();
-	state.enterPreStatementContext();
 	const whenTrueStr = transpileExpression(state, node.getWhenTrue());
-	result += state.exitPreStatementContext();
+
 	if (id !== strWithoutParens(whenTrueStr)) {
-		result += state.indent + `${id} = ${whenTrueStr};\n`;
+		state.pushPreStatement(state.indent + `${id} = ${whenTrueStr};\n`);
 	}
 	state.popIndent();
-	result += state.indent + `else\n`;
+	state.pushPreStatement(state.indent + `else\n`);
 	state.pushIndent();
-	state.enterPreStatementContext();
 	const whenFalseStr = transpileExpression(state, node.getWhenFalse());
-	result += state.exitPreStatementContext();
 	if (id !== strWithoutParens(whenFalseStr)) {
-		result += state.indent + `${id} = ${whenFalseStr};\n`;
+		state.pushPreStatement(state.indent + `${id} = ${whenFalseStr};\n`);
 	}
 	state.popIndent();
-	result += state.indent + `end;\n`;
-	state.pushPreStatement(result);
+	state.pushPreStatement(state.indent + `end;\n`);
 
 	if (currentConditionalContext === "") {
 		state.currentConditionalContext = "";

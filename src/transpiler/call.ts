@@ -3,7 +3,12 @@ import { checkApiAccess, checkNonAny, transpileExpression } from ".";
 import { TranspilerError, TranspilerErrorType } from "../errors/TranspilerError";
 import { TranspilerState } from "../TranspilerState";
 import { isArrayType, isStringType, isTupleReturnTypeCall, typeConstraint } from "../typeUtilities";
-import { appendDeclarationIfMissing } from "./expression";
+import {
+	appendDeclarationIfMissing,
+	expressionModifiesVariable,
+	getAccessedVariablesInExpression,
+	getModifiedVariablesInExpression,
+} from "./expression";
 
 const STRING_MACRO_METHODS = [
 	"byte",
@@ -169,7 +174,7 @@ type ReplaceFunction = (
 	subExp: ts.LeftHandSideExpression<ts.ts.LeftHandSideExpression>,
 ) => string | undefined;
 
-type ReplaceMap = Map<string, ReplaceFunction>;
+type ReplaceMap = ReadonlyMap<string, ReplaceFunction>;
 
 function wrapExpFunc(replacer: (accessPath: string) => string): ReplaceFunction {
 	return (params, state, subExp) => replacer(wrapExpressionIfNeeded(state, subExp));
@@ -187,8 +192,8 @@ const STRING_REPLACE_METHODS: ReplaceMap = new Map<string, ReplaceFunction>()
 		return `string.split(${wrapExpressionIfNeeded(state, subExp)}, ${transpileCallArgument(state, params[0])})`;
 	});
 
-STRING_REPLACE_METHODS.set("trimStart", STRING_REPLACE_METHODS.get("trimLeft")!);
-STRING_REPLACE_METHODS.set("trimEnd", STRING_REPLACE_METHODS.get("trimRight")!);
+(STRING_REPLACE_METHODS as Map<string, ReplaceFunction>).set("trimStart", STRING_REPLACE_METHODS.get("trimLeft")!);
+(STRING_REPLACE_METHODS as Map<string, ReplaceFunction>).set("trimEnd", STRING_REPLACE_METHODS.get("trimRight")!);
 
 const ARRAY_REPLACE_METHODS: ReplaceMap = new Map<string, ReplaceFunction>()
 	.set("pop", accessPathWrap(accessPath => `table.remove(${accessPath})`))
@@ -354,17 +359,85 @@ const GLOBAL_REPLACE_METHODS: ReplaceMap = new Map<string, ReplaceFunction>().se
 });
 
 export function transpileCallArgument(state: TranspilerState, arg: ts.Node) {
+	// state.enterPreStatementContext();
 	const expStr = transpileExpression(state, arg as ts.Expression);
+
 	if (!ts.TypeGuards.isSpreadElement(arg)) {
 		checkNonAny(arg);
 	}
+
+	// if (state.hasPreStatementsInContext()) {
+	// 	state.pushPreStatement(...state.preStatementContext.pop()!);
+	// }
 	return expStr;
+}
+
+export function compileCallArguments(state: TranspilerState, args: Array<ts.Node>) {
+	const contexts = new Array<Array<string>>();
+	let pushAll = false;
+
+	const { length } = args;
+
+	// We can safely check against getText because adjacent
+	for (let i = 0; i < length; i++) {
+		const arg = args[i];
+		const accessedVars = new Set(getAccessedVariablesInExpression(arg).map(varExp => varExp.getText()));
+		getModifiedVariablesInExpression(arg).forEach(modifiedVar => {
+			accessedVars.delete(modifiedVar.getText());
+		});
+
+		for (let j = i + 1; j < length; j++) {
+			getModifiedVariablesInExpression(args[j]).some(modifiedVar => accessedVars.has(modifiedVar.getText()));
+		}
+	}
+
+	const compiledArgs = args.map(arg => {
+		state.enterPreStatementContext();
+		const expStr = transpileExpression(state, arg as ts.Expression);
+		const context = state.preStatementContext.pop()!;
+		if (context.length > 0) {
+			pushAll = true;
+		}
+		contexts.push(context);
+		return expStr;
+	});
+
+	if (pushAll) {
+		contexts.forEach((v, i) => {
+			if (v.length === 0) {
+			}
+		});
+	}
+
+	return compiledArgs;
 }
 
 export function transpileCallArguments(state: TranspilerState, args: Array<ts.Node>, extraParameter?: string) {
 	const argStrs = new Array<string>();
+	const firstMods = getModifiedVariablesInExpression(args.shift()!);
+
+	args.reverse().findIndex(arg => {
+		const accessedVars = getAccessedVariablesInExpression(arg);
+		const modifiedVars = getModifiedVariablesInExpression(arg);
+
+		accessedVars
+			.filter(
+				accessedVar =>
+					(firstMods as Array<ts.Node>).findIndex(
+						modifiedVar => accessedVar.getText() === modifiedVar.getText(),
+					) !== -1,
+			)
+			.forEach(modifiedVar => {
+				console.log(modifiedVar.getText());
+			});
+
+		if (modifiedVars) {
+			return false;
+		}
+	});
 
 	for (const arg of args) {
+		// arg.
 		argStrs.push(transpileCallArgument(state, arg));
 	}
 

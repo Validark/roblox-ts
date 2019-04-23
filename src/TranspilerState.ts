@@ -9,10 +9,10 @@ interface Partition {
 export class TranspilerState {
 	constructor(public readonly syncInfo: Array<Partition>, public readonly modulesDir?: ts.Directory) {}
 
-	private preStatementContext = new Array<Array<string>>();
+	public preStatementContext = new Array<Array<string>>();
 
-	public pushPreStatement(str: string) {
-		this.preStatementContext[this.preStatementContext.length - 1].push(str);
+	public pushPreStatement(...strs: Array<string>) {
+		this.preStatementContext[this.preStatementContext.length - 1].push(...strs);
 	}
 
 	public enterPreStatementContext() {
@@ -22,8 +22,9 @@ export class TranspilerState {
 	}
 
 	/** Exits a preStatement context and returns the popped layer so it may be appended */
-	public exitPreStatementContext() {
-		return this.preStatementContext.pop()!.join("");
+	public exitPreStatementContext(numTabs: number = 0) {
+		const sep = "\t".repeat(numTabs);
+		return sep + this.preStatementContext.pop()!.join(sep);
 	}
 
 	public hasPreStatementsInContext() {
