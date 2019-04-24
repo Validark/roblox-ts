@@ -116,7 +116,7 @@ export function transpileBinaryExpression(state: TranspilerState, node: ts.Binar
 			const opExpStr = transpileExpression(state, expression);
 			const propertyStr = lhs.getName();
 			const id = state.getNewId();
-			statements.push(`local ${id} = ${opExpStr}`);
+			statements.push(`local ${id} = ${opExpStr};\n`);
 			lhsStr = `${id}.${propertyStr}`;
 		} else {
 			lhsStr = transpileExpression(state, lhs);
@@ -125,43 +125,44 @@ export function transpileBinaryExpression(state: TranspilerState, node: ts.Binar
 
 		/* istanbul ignore else */
 		if (opKind === ts.SyntaxKind.EqualsToken) {
-			statements.push(`${lhsStr} = ${rhsStr}`);
+			statements.push(`${lhsStr} = ${rhsStr};\n`);
 		} else if (opKind === ts.SyntaxKind.BarEqualsToken) {
 			const barExpStr = getLuaBarExpression(state, node, lhsStr, rhsStr);
-			statements.push(`${lhsStr} = ${barExpStr}`);
+			statements.push(`${lhsStr} = ${barExpStr};\n`);
 		} else if (opKind === ts.SyntaxKind.AmpersandEqualsToken) {
 			const ampersandExpStr = getLuaBitExpression(state, lhsStr, rhsStr, "and");
-			statements.push(`${lhsStr} = ${ampersandExpStr}`);
+			statements.push(`${lhsStr} = ${ampersandExpStr};\n`);
 		} else if (opKind === ts.SyntaxKind.CaretEqualsToken) {
 			const caretExpStr = getLuaBitExpression(state, lhsStr, rhsStr, "xor");
-			statements.push(`${lhsStr} = ${caretExpStr}`);
+			statements.push(`${lhsStr} = ${caretExpStr};\n`);
 		} else if (opKind === ts.SyntaxKind.LessThanLessThanEqualsToken) {
 			const lhsExpStr = getLuaBitExpression(state, lhsStr, rhsStr, "lsh");
-			statements.push(`${lhsStr} = ${lhsExpStr}`);
+			statements.push(`${lhsStr} = ${lhsExpStr};\n`);
 		} else if (opKind === ts.SyntaxKind.GreaterThanGreaterThanEqualsToken) {
 			const rhsExpStr = getLuaBitExpression(state, lhsStr, rhsStr, "rsh");
-			statements.push(`${lhsStr} = ${rhsExpStr}`);
+			statements.push(`${lhsStr} = ${rhsExpStr};\n`);
 		} else if (opKind === ts.SyntaxKind.PlusEqualsToken) {
 			const addExpStr = getLuaAddExpression(node, lhsStr, rhsStr, true);
-			statements.push(`${lhsStr} = ${addExpStr}`);
+			statements.push(`${lhsStr} = ${addExpStr};\n`);
 		} else if (opKind === ts.SyntaxKind.MinusEqualsToken) {
-			statements.push(`${lhsStr} = ${lhsStr} - (${rhsStr})`);
+			statements.push(`${lhsStr} = ${lhsStr} - (${rhsStr});\n`);
 		} else if (opKind === ts.SyntaxKind.AsteriskEqualsToken) {
-			statements.push(`${lhsStr} = ${lhsStr} * (${rhsStr})`);
+			statements.push(`${lhsStr} = ${lhsStr} * (${rhsStr});\n`);
 		} else if (opKind === ts.SyntaxKind.SlashEqualsToken) {
-			statements.push(`${lhsStr} = ${lhsStr} / (${rhsStr})`);
+			statements.push(`${lhsStr} = ${lhsStr} / (${rhsStr});\n`);
 		} else if (opKind === ts.SyntaxKind.AsteriskAsteriskEqualsToken) {
-			statements.push(`${lhsStr} = ${lhsStr} ^ (${rhsStr})`);
+			statements.push(`${lhsStr} = ${lhsStr} ^ (${rhsStr});\n`);
 		} else if (opKind === ts.SyntaxKind.PercentEqualsToken) {
-			statements.push(`${lhsStr} = ${lhsStr} % (${rhsStr})`);
+			statements.push(`${lhsStr} = ${lhsStr} % (${rhsStr});\n`);
 		}
 
 		const parentKind = node.getParentOrThrow().getKind();
+		const statementsStr = statements.join("");
 		if (parentKind === ts.SyntaxKind.ExpressionStatement || parentKind === ts.SyntaxKind.ForStatement) {
-			return statements.join("; ");
+			return statementsStr;
 		} else {
-			const statementsStr = statements.join("; ");
-			return `(function() ${statementsStr}; return ${lhsStr}; end)()`;
+			state.pushPreStatement(statementsStr);
+			return lhsStr;
 		}
 	} else {
 		lhsStr = transpileExpression(state, lhs);
