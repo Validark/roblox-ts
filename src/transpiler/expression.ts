@@ -184,14 +184,16 @@ export function getModifiedVariablesInExpression(expression: ts.Node<ts.ts.Node>
 }
 
 export function getAccessedVariablesInExpression(expression: ts.Node<ts.ts.Node>) {
-	return [expression, ...expression.getDescendants()].filter(node => ts.TypeGuards.isIdentifier(node));
+	return [expression, ...expression.getDescendants()].filter(node => {
+		console.log(ts.TypeGuards.isExpression(node), node.getKindName(), node.getText());
+		return (
+			!new Set(getModifiedVariablesInExpression(node)).has(node as ts.Expression) &&
+			ts.TypeGuards.isIdentifier(node)
+		);
+	});
 }
 
-export function appendDeclarationIfMissing(
-	state: TranspilerState,
-	possibleExpressionStatement: ts.Node,
-	transpiledNode: string,
-) {
+export function appendDeclarationIfMissing(possibleExpressionStatement: ts.Node, transpiledNode: string) {
 	if (ts.TypeGuards.isExpressionStatement(possibleExpressionStatement)) {
 		return "local _ = " + transpiledNode;
 	} else {

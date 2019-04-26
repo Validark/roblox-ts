@@ -8,11 +8,36 @@ interface Partition {
 
 export class TranspilerState {
 	constructor(public readonly syncInfo: Array<Partition>, public readonly modulesDir?: ts.Directory) {}
-
 	public preStatementContext = new Array<Array<string>>();
 
 	public pushPreStatement(...strs: Array<string>) {
 		this.preStatementContext[this.preStatementContext.length - 1].push(...strs);
+	}
+
+	public pushPreStatementToNextId(transpiledSource: string) {
+		/** Gets the previous id, although if one has never been used it will return `_-1` */
+		const sum = this.idStack.reduce((accum, value) => accum + value);
+		const currentId = `_${sum - 1}`;
+		/** Gets the top PreStatement to compare to */
+		let top: string | undefined;
+
+		for (let i = this.preStatementContext.length - 1; 0 <= i; i--) {
+			const context = this.preStatementContext[i];
+			const topPreStatement = context[context.length - 1];
+			if (topPreStatement) {
+				top = topPreStatement;
+				break;
+			}
+		}
+
+		/** If we would write a duplicate `local _5 = i`, skip it */
+		if (top === this.indent + `local ${currentId} = ${transpiledSource};\n`) {
+			return currentId;
+		} else {
+			const newId = this.getNewId();
+			this.pushPreStatement(this.indent + `local ${newId} = ${transpiledSource};\n`);
+			return newId;
+		}
 	}
 
 	public enterPreStatementContext() {

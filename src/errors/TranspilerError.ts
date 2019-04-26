@@ -22,7 +22,6 @@ export enum TranspilerErrorType {
 	BadExpression,
 	BadFunctionBody,
 	ExpectedPropertyAccessExpression,
-	NoMacroMathExpressionStatement,
 	NoEqualsEquals,
 	NoExclamationEquals,
 	BadBinaryExpression,
@@ -64,6 +63,7 @@ export enum TranspilerErrorType {
 	BadDestructuringType,
 	NullableIndexOnMapOrSet,
 	BadSpreadType,
+	BadSwitchDefaultPosition,
 }
 
 export class TranspilerError extends Error {

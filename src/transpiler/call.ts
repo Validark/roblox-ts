@@ -3,11 +3,7 @@ import { checkApiAccess, checkNonAny, transpileExpression } from ".";
 import { TranspilerError, TranspilerErrorType } from "../errors/TranspilerError";
 import { TranspilerState } from "../TranspilerState";
 import { isArrayType, isStringType, isTupleReturnTypeCall, typeConstraint } from "../typeUtilities";
-import {
-	appendDeclarationIfMissing,
-	getAccessedVariablesInExpression,
-	getModifiedVariablesInExpression,
-} from "./expression";
+import { appendDeclarationIfMissing } from "./expression";
 
 const STRING_MACRO_METHODS = [
 	"byte",
@@ -146,7 +142,7 @@ function transpileLiterally(
 			result += transpileParamFunc(state, params);
 			state.popIndent();
 			result += state.indent + "}";
-			return appendDeclarationIfMissing(state, leftHandSideParent, result);
+			return appendDeclarationIfMissing(leftHandSideParent, result);
 		}
 	}
 }
@@ -250,7 +246,6 @@ const ARRAY_REPLACE_METHODS: ReplaceMap = new Map<string, ReplaceFunction>()
 
 	.set("isEmpty", (params, state, subExp) =>
 		appendDeclarationIfMissing(
-			state,
 			getLeftHandSideParent(subExp),
 			`(next(${transpileExpression(state, subExp)}) == nil)`,
 		),
@@ -260,7 +255,7 @@ const MAP_REPLACE_METHODS: ReplaceMap = new Map<string, ReplaceFunction>()
 	.set("get", (params, state, subExp) => {
 		const accessPath = wrapExpressionIfNeeded(state, subExp, true);
 		const [key] = compileCallArguments(state, params);
-		return appendDeclarationIfMissing(state, getLeftHandSideParent(subExp), `${accessPath}[${key}]`);
+		return appendDeclarationIfMissing(getLeftHandSideParent(subExp), `${accessPath}[${key}]`);
 	})
 
 	.set("set", (params, state, subExp) => {
@@ -289,12 +284,11 @@ const MAP_REPLACE_METHODS: ReplaceMap = new Map<string, ReplaceFunction>()
 	.set("has", (params, state, subExp) => {
 		const accessPath = wrapExpressionIfNeeded(state, subExp, true);
 		const [key] = compileCallArguments(state, params);
-		return appendDeclarationIfMissing(state, getLeftHandSideParent(subExp), `(${accessPath}[${key}] ~= nil)`);
+		return appendDeclarationIfMissing(getLeftHandSideParent(subExp), `(${accessPath}[${key}] ~= nil)`);
 	})
 
 	.set("isEmpty", (params, state, subExp) =>
 		appendDeclarationIfMissing(
-			state,
 			getLeftHandSideParent(subExp),
 			`(next(${transpileExpression(state, subExp)}) == nil)`,
 		),
@@ -328,12 +322,11 @@ const SET_REPLACE_METHODS: ReplaceMap = new Map<string, ReplaceFunction>()
 	.set("has", (params, state, subExp) => {
 		const accessPath = wrapExpressionIfNeeded(state, subExp, true);
 		const [key] = compileCallArguments(state, params);
-		return appendDeclarationIfMissing(state, getLeftHandSideParent(subExp), `(${accessPath}[${key}] == true)`);
+		return appendDeclarationIfMissing(getLeftHandSideParent(subExp), `(${accessPath}[${key}] == true)`);
 	})
 
 	.set("isEmpty", (params, state, subExp) =>
 		appendDeclarationIfMissing(
-			state,
 			getLeftHandSideParent(subExp),
 			`(next(${transpileExpression(state, subExp)}) == nil)`,
 		),
@@ -341,7 +334,6 @@ const SET_REPLACE_METHODS: ReplaceMap = new Map<string, ReplaceFunction>()
 
 const OBJECT_REPLACE_METHODS: ReplaceMap = new Map<string, ReplaceFunction>().set("isEmpty", (params, state, subExp) =>
 	appendDeclarationIfMissing(
-		state,
 		getLeftHandSideParent(subExp),
 		`(next(${compileCallArguments(state, params)[0]}) == nil)`,
 	),
@@ -351,52 +343,18 @@ const RBX_MATH_CLASSES = ["CFrame", "UDim", "UDim2", "Vector2", "Vector2int16", 
 
 const GLOBAL_REPLACE_METHODS: ReplaceMap = new Map<string, ReplaceFunction>().set("typeIs", (params, state, subExp) => {
 	const [obj, type] = compileCallArguments(state, params);
-	return appendDeclarationIfMissing(state, getLeftHandSideParent(subExp, 2), `(typeof(${obj}) == ${type})`);
+	return appendDeclarationIfMissing(getLeftHandSideParent(subExp, 2), `(typeof(${obj}) == ${type})`);
 });
 
 export function compileCallArguments(state: TranspilerState, args: Array<ts.Node>) {
-	const { length } = args;
-	const compiledArgs = new Array<string>();
-
-	for (let i = 0; i < length; i++) {
-		const arg = args[i];
-		const accessedVars = new Set(getAccessedVariablesInExpression(arg).map(varExp => varExp.getText()));
-		getModifiedVariablesInExpression(arg).forEach(modifiedVar => {
-			accessedVars.delete(modifiedVar.getText());
-		});
-
-		let shouldProxy = false;
-
-		if (accessedVars.size > 0) {
-			for (let j = i + 1; j < length; j++) {
-				// We can safely check against getText because they are adjacent
-				if (
-					getModifiedVariablesInExpression(args[j]).some(modifiedVar =>
-						accessedVars.has(modifiedVar.getText()),
-					)
-				) {
-					shouldProxy = true;
-					break;
-				}
-			}
-		}
-
+	return args.map(arg => {
 		if (!ts.TypeGuards.isSpreadElement(arg)) {
 			checkNonAny(arg);
 		}
 
-		const expStr = transpileExpression(state, arg as ts.Expression);
-
-		if (shouldProxy) {
-			const id = state.getNewId();
-			state.pushPreStatement(state.indent + `local ${id} = ${expStr};\n`);
-			compiledArgs.push(id);
-		} else {
-			compiledArgs.push(expStr);
-		}
-	}
-
-	return compiledArgs;
+		console.log(ts.TypeGuards.isExpression(arg), arg.getKindName(), arg.getText());
+		return transpileExpression(state, arg as ts.Expression);
+	});
 }
 
 export function transpileCallArguments(state: TranspilerState, args: Array<ts.Node>, extraParameter?: string) {
@@ -545,30 +503,16 @@ export function getPropertyAccessExpressionType(
 			return PropertyCallExpType.ObjectConstructor;
 		}
 
-		const validateMathCall = () => {
-			if (ts.TypeGuards.isExpressionStatement(node.getParent())) {
-				throw new TranspilerError(
-					`${subExpTypeName}.${property}() cannot be an expression statement!`,
-					node,
-					TranspilerErrorType.NoMacroMathExpressionStatement,
-				);
-			}
-		};
-
 		// custom math
 		if (RBX_MATH_CLASSES.indexOf(subExpTypeName) !== -1) {
 			switch (property) {
 				case "add":
-					validateMathCall();
 					return PropertyCallExpType.RbxMathAdd;
 				case "sub":
-					validateMathCall();
 					return PropertyCallExpType.RbxMathSub;
 				case "mul":
-					validateMathCall();
 					return PropertyCallExpType.RbxMathMul;
 				case "div":
-					validateMathCall();
 					return PropertyCallExpType.RbxMathDiv;
 			}
 		}
@@ -611,13 +555,25 @@ export function transpilePropertyCallExpression(state: TranspilerState, node: ts
 		case PropertyCallExpType.ObjectConstructor:
 			return transpilePropertyMethod(state, property, params, subExp, "Object", OBJECT_REPLACE_METHODS);
 		case PropertyCallExpType.RbxMathAdd:
-			return `(${transpileExpression(state, subExp)} + (${compileCallArguments(state, params)[0]}))`;
+			return appendDeclarationIfMissing(
+				node.getParent(),
+				`(${transpileExpression(state, subExp)} + (${compileCallArguments(state, params)[0]}))`,
+			);
 		case PropertyCallExpType.RbxMathSub:
-			return `(${transpileExpression(state, subExp)} - (${compileCallArguments(state, params)[0]}))`;
+			return appendDeclarationIfMissing(
+				node.getParent(),
+				`(${transpileExpression(state, subExp)} - (${compileCallArguments(state, params)[0]}))`,
+			);
 		case PropertyCallExpType.RbxMathMul:
-			return `(${transpileExpression(state, subExp)} * (${compileCallArguments(state, params)[0]}))`;
+			return appendDeclarationIfMissing(
+				node.getParent(),
+				`(${transpileExpression(state, subExp)} * (${compileCallArguments(state, params)[0]}))`,
+			);
 		case PropertyCallExpType.RbxMathDiv:
-			return `(${transpileExpression(state, subExp)} / (${compileCallArguments(state, params)[0]}))`;
+			return appendDeclarationIfMissing(
+				node.getParent(),
+				`(${transpileExpression(state, subExp)} / (${compileCallArguments(state, params)[0]}))`,
+			);
 	}
 
 	const expType = expression.getType();

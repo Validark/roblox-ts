@@ -2,6 +2,7 @@ import * as ts from "ts-morph";
 import { transpileExpression } from ".";
 import { TranspilerError, TranspilerErrorType } from "../errors/TranspilerError";
 import { TranspilerState } from "../TranspilerState";
+import { transpileRawIdentifier } from "./identifier";
 
 function isUnaryNonStatement(parent: ts.Node<ts.ts.Node>, node: ts.PrefixUnaryExpression | ts.PostfixUnaryExpression) {
 	return !(
@@ -15,9 +16,10 @@ function getUnaryExpressionString(state: TranspilerState, operand: ts.UnaryExpre
 		const expression = operand.getExpression();
 		const opExpStr = transpileExpression(state, expression);
 		const propertyStr = operand.getName();
-		const id = state.getNewId();
-		state.pushPreStatement(state.indent + `local ${id} = ${opExpStr};\n`);
+		const id = state.pushPreStatementToNextId(opExpStr);
 		return `${id}.${propertyStr}`;
+	} else if (ts.TypeGuards.isIdentifier(operand)) {
+		return transpileRawIdentifier(state, operand);
 	} else {
 		return transpileExpression(state, operand);
 	}
@@ -112,8 +114,7 @@ export function transpilePostfixUnaryExpression(state: TranspilerState, node: ts
 		const incrStr = getIncrementString(opKind, expStr, node);
 
 		if (isNonStatement) {
-			const id = state.getNewId();
-			state.pushPreStatement(state.indent + `local ${id} = ${expStr};\n`);
+			const id = state.pushPreStatementToNextId(expStr);
 			state.pushPreStatement(state.indent + incrStr + ";\n");
 			state.pushPreStatement(...state.preStatementContext.pop()!);
 			return id;

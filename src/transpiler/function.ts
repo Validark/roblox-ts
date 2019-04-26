@@ -74,6 +74,7 @@ function transpileFunctionBody(
 		if (isBlock) {
 			result += transpileBlock(state, body as ts.Block);
 		} else {
+			console.log(ts.TypeGuards.isExpression(body), body.getKindName(), body.getText());
 			result += getReturnStrFromExpression(state, body as ts.Expression, node) + "\n";
 		}
 		state.popIndent();

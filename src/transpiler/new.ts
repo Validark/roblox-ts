@@ -90,23 +90,15 @@ export function transpileNewExpression(state: TranspilerState, node: ts.NewExpre
 			);
 		}
 
-		return appendDeclarationIfMissing(state, node.getParent(), result + ` }`);
+		return appendDeclarationIfMissing(node.getParent(), result + ` }`);
 	}
 
 	if (inheritsFrom(expressionType, "MapConstructor")) {
-		return appendDeclarationIfMissing(
-			state,
-			node.getParent(),
-			transpileSetMapConstructorHelper(state, node, args, "map"),
-		);
+		return appendDeclarationIfMissing(node.getParent(), transpileSetMapConstructorHelper(state, node, args, "map"));
 	}
 
 	if (inheritsFrom(expressionType, "SetConstructor")) {
-		return appendDeclarationIfMissing(
-			state,
-			node.getParent(),
-			transpileSetMapConstructorHelper(state, node, args, "set"),
-		);
+		return appendDeclarationIfMissing(node.getParent(), transpileSetMapConstructorHelper(state, node, args, "set"));
 	}
 
 	if (inheritsFrom(expressionType, "WeakMapConstructor")) {

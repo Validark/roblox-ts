@@ -1,6 +1,7 @@
 import * as ts from "ts-morph";
 import { checkReserved } from ".";
 import { TranspilerState } from "../TranspilerState";
+import { getModifiedVariablesInExpression } from "./expression";
 
 export const BUILT_INS = ["Promise", "Symbol", "typeIs"];
 
@@ -9,9 +10,8 @@ export const replacements: ReadonlyMap<string, string> = new Map<string, string>
 	["typeOf", "typeof"],
 ]);
 
-function transpileIdentifierRaw(state: TranspilerState, node: ts.Identifier, isDefinition: boolean) {
+export function transpileRawIdentifier(state: TranspilerState, node: ts.Identifier, isDefinition: boolean = false) {
 	let name = node.getText();
-
 	const replacement = replacements.get(name);
 
 	if (replacement) {
@@ -87,32 +87,62 @@ function transpileIdentifierRaw(state: TranspilerState, node: ts.Identifier, isD
 }
 
 export function transpileIdentifier(state: TranspilerState, node: ts.Identifier, isDefinition: boolean = false) {
-	// const parent = node.getFirstAncestorByKind(ts.SyntaxKind.CallExpression);
-	// if (parent) {
-	// 	const myArguments = parent.getArguments();
-	// 	const argNum = myArguments.findIndex(
-	// 		arg => arg === node || arg.getDescendants().some(descendant => descendant === node),
-	// 	);
-	// 	console.log(argNum, node.getText(), parent.getText());
+	const transpiledSource = transpileRawIdentifier(state, node, isDefinition);
 
-	// 	if (argNum !== -1) {
-	// 		const definition = node.getDefinitions().map(def => def.getNode())[0];
-	// 		if (
-	// 			definition &&
-	// 			(myArguments.length !== argNum + 1 &&
-	// 				myArguments.slice(argNum + 1).some(arg => {
-	// 					const bool = expressionModifiesVariable(arg, definition as ts.Identifier);
+	// let references: Array<ts.Node>;
 
-	// 					return bool;
-	// 				}))
-	// 		) {
-	// 			const id = state.getNewId();
-	// 			state.pushPreStatement(
-	// 				state.indent + `local ${id} = ${transpileIdentifierRaw(state, node, isDefinition)};\n`,
-	// 			);
-	// 			return id;
+	// try {
+	// 	references = node.findReferencesAsNodes();
+	// } catch {
+	// 	references = [];
+	// }
+
+	// const referenceSet = new Set(references);
+	// referenceSet.delete(node);
+
+	// let layer = 0;
+	// /**
+	//  * Climb the ancestoral tree until we reach a statement, and find nextSiblings which modify this variable.
+	//  * If they exist, push the current value to a preStatement so it cannot be contaminated.
+	//  * The only exceptions to this rule are Statements/Expressions which have separate scopes,
+	//  * like ConditionalExpressions/ForStatements.
+	//  */
+	// for (const ancestor of [node, ...node.getAncestors()]) {
+	// 	const parent = ancestor.getParent();
+	// 	console.log("\t".repeat(layer) + "ancestor:", ancestor.getKindName(), ancestor.getText());
+	// 	if (parent) {
+	// 		console.log("\t".repeat(layer) + "parent:", parent.getKindName(), parent.getText());
+	// 	}
+	// 	if (ts.TypeGuards.isStatement(ancestor)) {
+	// 		console.log("\t".repeat(layer) + "isStatement");
+	// 	} else if (ts.TypeGuards.isDeclarationNamedNode(ancestor)) {
+	// 		console.log("\t".repeat(layer) + "isDeclarationNamedNode");
+	// 	} else if (parent) {
+	// 		if (ts.TypeGuards.isForStatement(parent)) {
+	// 			console.log("\t".repeat(layer) + "isForStatement");
+	// 		} else if (ts.TypeGuards.isConditionalExpression(parent)) {
+	// 			console.log("\t".repeat(layer) + "isConditionalExpression");
+	// 		} else if (ts.TypeGuards.isIfStatement(parent)) {
+	// 			console.log("\t".repeat(layer) + "isIfStatement");
 	// 		}
 	// 	}
+
+	// 	if ((parent && ts.TypeGuards.isStatement(parent)) || ts.TypeGuards.isDeclarationNamedNode(ancestor)) {
+	// 		break;
+	// 	}
+
+	// 	for (const sibling of ancestor.getNextSiblings()) {
+	// 		console.log("\t".repeat(layer + 1) + "sibling:", sibling.getKindName(), sibling.getText());
+	// 		for (const modifiedVar of getModifiedVariablesInExpression(sibling)) {
+	// 			console.log("\t".repeat(layer + 2) + "modifiedVar:", modifiedVar.getKindName(), modifiedVar.getText());
+	// 			if (referenceSet.has(modifiedVar)) {
+	// 				console.log("\t".repeat(layer + 3) + ">", transpiledSource);
+	// 				return state.pushPreStatementToNextId(transpiledSource);
+	// 			}
+	// 		}
+	// 	}
+	// 	layer++;
 	// }
-	return transpileIdentifierRaw(state, node, isDefinition);
+
+	return transpiledSource;
 }

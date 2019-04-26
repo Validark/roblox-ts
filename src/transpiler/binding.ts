@@ -206,6 +206,7 @@ export function getBindingData(
 				);
 				names.push(id);
 				if (op && op.getKind() === ts.SyntaxKind.EqualsToken) {
+					console.log(ts.TypeGuards.isExpression(pattern), pattern.getKindName(), pattern.getText());
 					const value = transpileExpression(state, pattern as ts.Expression);
 					postStatements.push(`if ${id} == nil then ${id} = ${value} end;`);
 				}
@@ -229,11 +230,11 @@ export function getBindingData(
 				);
 			}
 		} else if (ts.TypeGuards.isIdentifier(item)) {
-			const id = transpileExpression(state, item as ts.Expression);
+			const id = transpileExpression(state, item);
 			names.push(id);
 			values.push(getAccessor(parentId, childIndex));
 		} else if (ts.TypeGuards.isPropertyAccessExpression(item)) {
-			const id = transpileExpression(state, item as ts.Expression);
+			const id = transpileExpression(state, item);
 			names.push(id);
 			values.push(getAccessor(parentId, childIndex));
 		} else if (ts.TypeGuards.isArrayLiteralExpression(item)) {

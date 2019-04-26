@@ -617,7 +617,8 @@ export function transpileForStatement(state: TranspilerState, node: ts.ForStatem
 		conditionStr = condition ? transpileExpression(state, condition) : "true";
 		incrementorStr = incrementor ? transpileExpression(state, incrementor) + ";\n" : undefined;
 	}
-
+	result += state.exitPreStatementContext();
+	state.enterPreStatementContext();
 	result += state.indent + `while ${conditionStr} do\n`;
 	result += localizations;
 	state.pushIndent();
