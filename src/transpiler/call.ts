@@ -375,7 +375,8 @@ export function compileCallArguments(state: TranspilerState, args: Array<ts.Node
 		if (cachedStrs) {
 			state.pushPreStatement(...cachedStrs);
 		} else {
-			compiledArgs[i] = state.pushPreStatementToNextId(compiledArgs[i]);
+			const nextCachedStrs = cached[i + 1];
+			compiledArgs[i] = state.pushPreStatementToNextId(compiledArgs[i], nextCachedStrs);
 		}
 	}
 

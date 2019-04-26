@@ -14,27 +14,28 @@ export class TranspilerState {
 		this.preStatementContext[this.preStatementContext.length - 1].push(...strs);
 	}
 
-	public pushPreStatementToNextId(transpiledSource: string) {
+	public pushPreStatementToNextId(transpiledSource: string, nextCachedStrs?: Array<string>) {
 		/** Gets the top PreStatement to compare to */
-		let top: string | undefined;
+		let previousTop: string | undefined;
 
 		for (let i = this.preStatementContext.length - 1; 0 <= i; i--) {
 			const context = this.preStatementContext[i];
 			const topPreStatement = context[context.length - 1];
 			if (topPreStatement) {
-				top = topPreStatement;
+				previousTop = topPreStatement;
 				break;
 			}
 		}
 
-		/** If we would write a duplicate `local _5 = i`, skip it */
-		if (top) {
-			const matchesRegex = top.match(/^(\t*)local (_\d+) = ([^;]+);\n$/);
-			if (matchesRegex) {
-				console.log(matchesRegex);
-				const [, indentation, currentId, data] = matchesRegex;
-				if (indentation === this.indent && data === transpiledSource) {
-					return currentId;
+		for (const top of [previousTop, nextCachedStrs ? nextCachedStrs[0] : undefined]) {
+			/** If we would write a duplicate `local _5 = i`, skip it */
+			if (top) {
+				const matchesRegex = top.match(/^(\t*)local (_\d+) = ([^;]+);\n$/);
+				if (matchesRegex) {
+					const [, indentation, currentId, data] = matchesRegex;
+					if (indentation === this.indent && data === transpiledSource) {
+						return currentId;
+					}
 				}
 			}
 		}
