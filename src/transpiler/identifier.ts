@@ -1,7 +1,7 @@
 import * as ts from "ts-morph";
 import { checkReserved } from ".";
 import { TranspilerState } from "../TranspilerState";
-import { getModifiedVariablesInExpression } from "./expression";
+// import { getModifiedVariablesInExpression } from "./expression";
 
 export const BUILT_INS = ["Promise", "Symbol", "typeIs"];
 

@@ -347,14 +347,39 @@ const GLOBAL_REPLACE_METHODS: ReplaceMap = new Map<string, ReplaceFunction>().se
 });
 
 export function compileCallArguments(state: TranspilerState, args: Array<ts.Node>) {
-	return args.map(arg => {
+	const cached = new Array<Array<string>>();
+	let lastContextualIndex = args.length;
+
+	/** To preserve oroginal algorithmic order, values without a context
+	 * should be cached before later paremeters with contexts are pushed to
+	 * prestatementContexts
+	 */
+	const compiledArgs = args.map((arg, i) => {
 		if (!ts.TypeGuards.isSpreadElement(arg)) {
 			checkNonAny(arg);
 		}
 
-		console.log(ts.TypeGuards.isExpression(arg), arg.getKindName(), arg.getText());
-		return transpileExpression(state, arg as ts.Expression);
+		state.enterPreStatementContext();
+		const expStr = transpileExpression(state, arg as ts.Expression);
+		const argContext = state.preStatementContext.pop()!;
+		if (argContext.length > 0) {
+			lastContextualIndex = i;
+			cached[i] = argContext;
+		}
+		return expStr;
 	});
+
+	for (let i = 0; i <= lastContextualIndex; i++) {
+		const cachedStrs = cached[i];
+
+		if (cachedStrs) {
+			state.pushPreStatement(...cachedStrs);
+		} else {
+			compiledArgs[i] = state.pushPreStatementToNextId(compiledArgs[i]);
+		}
+	}
+
+	return compiledArgs;
 }
 
 export function transpileCallArguments(state: TranspilerState, args: Array<ts.Node>, extraParameter?: string) {

@@ -15,9 +15,6 @@ export class TranspilerState {
 	}
 
 	public pushPreStatementToNextId(transpiledSource: string) {
-		/** Gets the previous id, although if one has never been used it will return `_-1` */
-		const sum = this.idStack.reduce((accum, value) => accum + value);
-		const currentId = `_${sum - 1}`;
 		/** Gets the top PreStatement to compare to */
 		let top: string | undefined;
 
@@ -31,13 +28,20 @@ export class TranspilerState {
 		}
 
 		/** If we would write a duplicate `local _5 = i`, skip it */
-		if (top === this.indent + `local ${currentId} = ${transpiledSource};\n`) {
-			return currentId;
-		} else {
-			const newId = this.getNewId();
-			this.pushPreStatement(this.indent + `local ${newId} = ${transpiledSource};\n`);
-			return newId;
+		if (top) {
+			const matchesRegex = top.match(/^(\t*)local (_\d+) = ([^;]+);\n$/);
+			if (matchesRegex) {
+				console.log(matchesRegex);
+				const [, indentation, currentId, data] = matchesRegex;
+				if (indentation === this.indent && data === transpiledSource) {
+					return currentId;
+				}
+			}
 		}
+
+		const newId = this.getNewId();
+		this.pushPreStatement(this.indent + `local ${newId} = ${transpiledSource};\n`);
+		return newId;
 	}
 
 	public enterPreStatementContext() {
