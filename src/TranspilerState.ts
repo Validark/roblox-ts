@@ -47,8 +47,7 @@ export class TranspilerState {
 
 	public enterPreStatementContext() {
 		const newContext = new Array<string>();
-		this.preStatementContext.push(newContext);
-		return newContext;
+		return this.preStatementContext.push(newContext);
 	}
 
 	/** Exits a preStatement context and returns the popped layer so it may be appended */

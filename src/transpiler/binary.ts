@@ -130,7 +130,9 @@ export function transpileBinaryExpression(state: TranspilerState, node: ts.Binar
 				previouslhs = lhsStr;
 			}
 		}
+		// state.enterPreStatementContext();
 		rhsStr = transpileExpression(state, rhs);
+		// const context = state.preStatementContext.pop()!;
 
 		/* istanbul ignore else */
 		if (opKind === ts.SyntaxKind.EqualsToken) {
@@ -174,7 +176,19 @@ export function transpileBinaryExpression(state: TranspilerState, node: ts.Binar
 		}
 	} else {
 		lhsStr = transpileExpression(state, lhs);
+		const num = state.enterPreStatementContext();
 		rhsStr = transpileExpression(state, rhs);
+		const context = state.preStatementContext.pop()!;
+
+		if (context.length > 0 || num < state.preStatementContext.length) {
+			console.log(state.preStatementContext[state.preStatementContext.length - 1]);
+			console.log(context, lhsStr);
+			lhsStr = state.pushPreStatementToNextId(
+				lhsStr,
+				state.preStatementContext[state.preStatementContext.length - 1],
+			);
+			state.pushPreStatement(...context);
+		}
 	}
 
 	/* istanbul ignore else */

@@ -26,6 +26,7 @@ export function transpileIfStatement(state: TranspilerState, node: ts.IfStatemen
 			result += state.indent + `if ${elseIfExpression} then\n`;
 		} else {
 			state.popIndent();
+			state.exitPreStatementContext();
 			result += state.indent + `elseif ${elseIfExpression} then\n`;
 		}
 

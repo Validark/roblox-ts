@@ -348,9 +348,9 @@ const GLOBAL_REPLACE_METHODS: ReplaceMap = new Map<string, ReplaceFunction>().se
 
 export function compileCallArguments(state: TranspilerState, args: Array<ts.Node>) {
 	const cached = new Array<Array<string>>();
-	let lastContextualIndex = args.length;
+	let lastContextualIndex: number | undefined;
 
-	/** To preserve oroginal algorithmic order, values without a context
+	/** To preserve original algorithmic order, values without a context
 	 * should be cached before later paremeters with contexts are pushed to
 	 * prestatementContexts
 	 */
@@ -359,26 +359,35 @@ export function compileCallArguments(state: TranspilerState, args: Array<ts.Node
 			checkNonAny(arg);
 		}
 
-		state.enterPreStatementContext();
+		const num = state.enterPreStatementContext();
 		const expStr = transpileExpression(state, arg as ts.Expression);
 		const argContext = state.preStatementContext.pop()!;
-		if (argContext.length > 0) {
+		if (argContext.length > 0 || num < state.preStatementContext.length) {
 			lastContextualIndex = i;
 			cached[i] = argContext;
 		}
 		return expStr;
 	});
 
-	for (let i = 0; i <= lastContextualIndex; i++) {
-		const cachedStrs = cached[i];
+	if (lastContextualIndex) {
+		for (let i = 0; i <= lastContextualIndex; i++) {
+			const cachedStrs = cached[i];
 
-		if (cachedStrs) {
-			state.pushPreStatement(...cachedStrs);
-		} else {
-			const nextCachedStrs = cached[i + 1];
-			compiledArgs[i] = state.pushPreStatementToNextId(compiledArgs[i], nextCachedStrs);
+			if (cachedStrs) {
+				state.pushPreStatement(...cachedStrs);
+			} else {
+				// const nextCachedStrs = cached[i + 1];
+				// nextCachedStrs
+				compiledArgs[i] = state.pushPreStatementToNextId(compiledArgs[i]);
+			}
 		}
 	}
+
+	// Optimize this case:
+	/*
+	local _0 = "":
+	print(_0)
+	*/
 
 	return compiledArgs;
 }
