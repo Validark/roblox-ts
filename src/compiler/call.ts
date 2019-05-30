@@ -19,6 +19,7 @@ import {
 	typeConstraint,
 } from "../typeUtilities";
 import { getNonNullExpressionDownwards, getNonNullExpressionUpwards } from "../utility";
+import { isFunctionExpressionMethod, isMethodDeclaration } from "./function";
 import { getReadableExpressionName, isIdentifierDefinedInConst } from "./indexed";
 
 const STRING_MACRO_METHODS = [
@@ -501,8 +502,23 @@ export function compileCallExpression(
 			}
 		}
 
+		let pushedFirstParam: string | undefined;
+
+		if (ts.TypeGuards.isIdentifier(exp)) {
+			for (const def of exp.getDefinitions()) {
+				const definitionParent = def.getNode().getParent();
+				if (
+					definitionParent &&
+					ts.TypeGuards.isFunctionExpression(definitionParent) &&
+					isFunctionExpressionMethod(definitionParent)
+				) {
+					pushedFirstParam = "self";
+				}
+			}
+		}
+
 		const callPath = compileExpression(state, exp);
-		result = `${callPath}(${compileCallArgumentsAndJoin(state, params)})`;
+		result = `${callPath}(${compileCallArgumentsAndJoin(state, params, pushedFirstParam)})`;
 	}
 
 	if (!doNotWrapTupleReturn) {
@@ -701,7 +717,7 @@ export function compilePropertyCallExpression(state: CompilerState, node: ts.Cal
 						}
 					}
 				}
-				if (ts.TypeGuards.isMethodDeclaration(dec) || ts.TypeGuards.isMethodSignature(dec)) {
+				if (isMethodDeclaration(dec) || ts.TypeGuards.isMethodSignature(dec)) {
 					return true;
 				}
 				return false;
@@ -728,7 +744,7 @@ export function compilePropertyCallExpression(state: CompilerState, node: ts.Cal
 				if (
 					ts.TypeGuards.isFunctionTypeNode(dec) ||
 					ts.TypeGuards.isPropertySignature(dec) ||
-					ts.TypeGuards.isFunctionExpression(dec) ||
+					(ts.TypeGuards.isFunctionExpression(dec) && !isFunctionExpressionMethod(dec)) ||
 					ts.TypeGuards.isArrowFunction(dec) ||
 					ts.TypeGuards.isFunctionDeclaration(dec)
 				) {
